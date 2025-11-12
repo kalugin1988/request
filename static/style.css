@@ -1,0 +1,332 @@
+:root {
+    --primary-color: #2c5aa0;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --dark-color: #343a40;
+    --secondary-color: #6c757d;
+}
+
+/* Базовые стили */
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 50vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+}
+
+.container-fluid {
+    min-height: 50vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+main {
+    flex: 1;
+}
+
+/* Типография */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+}
+
+/* Карточки */
+.card {
+    border: none;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0;
+    border: none;
+}
+
+/* Контейнеры для заявок */
+.applications-container,
+.applications-container-admin {
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.applications-container {
+    max-height: 500px;
+}
+
+.applications-container-admin {
+    max-height: 600px;
+    padding: 20px;
+}
+
+/* Стилизация скроллбара */
+.applications-container::-webkit-scrollbar,
+.applications-container-admin::-webkit-scrollbar {
+    width: 6px;
+}
+
+.applications-container::-webkit-scrollbar-track,
+.applications-container-admin::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.applications-container::-webkit-scrollbar-thumb,
+.applications-container-admin::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.applications-container::-webkit-scrollbar-thumb:hover,
+.applications-container-admin::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.applications-container-admin::-webkit-scrollbar {
+    width: 8px;
+}
+
+.applications-container-admin::-webkit-scrollbar-track {
+    border-radius: 4px;
+}
+
+/* Карточки заявок */
+.application-card {
+    border-left: 5px solid var(--secondary-color);
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    border-radius: 10px;
+}
+
+.application-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateX(5px);
+}
+
+.application-card.urgent {
+    border-left-color: var(--danger-color);
+    background: linear-gradient(135deg, #fff 0%, #ffe6e6 100%);
+}
+
+.application-card.high {
+    border-left-color: var(--warning-color);
+    background: linear-gradient(135deg, #fff 0%, #fff9e6 100%);
+}
+
+.application-card.normal {
+    border-left-color: var(--success-color);
+}
+
+.application-card.completed,
+.application-card.cancelled {
+    opacity: 0.7;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+/* Бейджи */
+.status-badge, .priority-badge {
+    font-size: 0.75em;
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.bg-status-active { 
+    background: linear-gradient(135deg, var(--info-color), #2a9fd6); 
+    color: white;
+}
+
+.bg-status-completed { 
+    background: linear-gradient(135deg, var(--success-color), #20c997); 
+    color: white;
+}
+
+.bg-status-cancelled { 
+    background: linear-gradient(135deg, var(--secondary-color), #5a6268); 
+    color: white;
+}
+
+.bg-priority-urgent { 
+    background: linear-gradient(135deg, var(--danger-color), #c82333); 
+    color: white;
+}
+
+.bg-priority-high { 
+    background: linear-gradient(135deg, var(--warning-color), #e0a800); 
+    color: black;
+}
+
+.bg-priority-normal { 
+    background: linear-gradient(135deg, var(--success-color), #20c997); 
+    color: white;
+}
+
+/* Кнопки */
+.btn {
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn-lg {
+    padding: 12px 24px;
+}
+
+.btn-group .btn.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+/* Формы */
+.form-control, .form-select {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    padding: 12px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(44, 90, 160, 0.25);
+}
+
+.form-control-lg {
+    padding: 15px;
+}
+
+/* Анимации */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Статистика */
+.stats-card {
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-3px);
+}
+
+/* Уведомления */
+.alert {
+    border: none;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, var(--success-color), #20c997);
+    color: white;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, var(--danger-color), #c82333);
+    color: white;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, var(--warning-color), #e0a800);
+    color: black;
+}
+
+/* Иконки */
+.fas, .fab {
+    transition: transform 0.3s ease;
+}
+
+.btn:hover .fas,
+.btn:hover .fab {
+    transform: scale(1.1);
+}
+
+/* Индикатор загрузки */
+.loading {
+    position: relative;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -20px 0 0 -20px;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .card {
+        margin: 2px;
+        border-radius: 10px;
+    }
+    
+    .btn-group {
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .btn-group .btn {
+        flex: 1;
+    }
+    
+    .applications-container {
+        max-height: 400px;
+    }
+    
+    header .d-flex {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    #user-info {
+        text-align: center;
+    }
+}
