@@ -4,6 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -16,12 +17,21 @@ const config = {
     adminUsernames: (process.env.ADMIN_USERNAMES || '').split(',').map(u => u.trim()).filter(u => u)
 };
 
+// Создаем папку data если её нет
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+    console.log('✅ Папка data создана');
+}
+
 // Инициализация базы данных
-const db = new sqlite3.Database('./applications.db', (err) => {
+const dbPath = path.join(dataDir, 'applications.db');
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('❌ Ошибка подключения к базе данных:', err.message);
     } else {
         console.log('✅ Подключение к SQLite базе данных установлено');
+        console.log('📁 База данных создана в:', dbPath);
         initializeDatabase();
     }
 });
