@@ -19,7 +19,7 @@ class AdminUtils {
             const adminsString = adminLine.split('=')[1];
             return adminsString
                 .split(',')
-                .map(u => u.trim())
+                .map(u => u.trim().toLowerCase())
                 .filter(u => u);
         } catch (error) {
             console.error('❌ Ошибка чтения .env файла:', error.message);
@@ -30,13 +30,14 @@ class AdminUtils {
     // Добавление администратора
     addAdmin(username) {
         try {
+            const normalizedUsername = username.toLowerCase();
             const currentAdmins = this.getCurrentAdmins();
             
-            if (currentAdmins.includes(username)) {
+            if (currentAdmins.includes(normalizedUsername)) {
                 return { success: false, message: 'Пользователь уже является администратором' };
             }
 
-            currentAdmins.push(username);
+            currentAdmins.push(normalizedUsername);
             this.updateEnvFile(currentAdmins);
             
             return { 
@@ -52,8 +53,9 @@ class AdminUtils {
     // Удаление администратора
     removeAdmin(username) {
         try {
+            const normalizedUsername = username.toLowerCase();
             const currentAdmins = this.getCurrentAdmins();
-            const filteredAdmins = currentAdmins.filter(admin => admin !== username);
+            const filteredAdmins = currentAdmins.filter(admin => admin !== normalizedUsername);
             
             if (filteredAdmins.length === currentAdmins.length) {
                 return { success: false, message: 'Пользователь не найден среди администраторов' };

@@ -15,7 +15,7 @@ const config = {
     ldapUrl: process.env.LDAP_URL || 'https://ldap.itschool25.ru/api/auth',
     apiToken: process.env.API_TOKEN || 'default_api_token_change_me',
     jwtSecret: process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production',
-    adminUsernames: (process.env.ADMIN_USERNAMES || '').split(',').map(u => u.trim()).filter(u => u)
+    adminUsernames: (process.env.ADMIN_USERNAMES || '').split(',').map(u => u.trim().toLowerCase()).filter(u => u)
 };
 
 // Инициализация утилит администратора
@@ -344,8 +344,9 @@ app.post('/api/auth', async (req, res) => {
             return res.status(401).json({ error: 'Неверный логин или пароль' });
         }
 
-        // Проверяем, является ли пользователь администратором
-        const isAdmin = config.adminUsernames.includes(username);
+        // Проверяем, является ли пользователь администратором (не регистрозависимо)
+        const normalizedUsername = username.toLowerCase();
+        const isAdmin = config.adminUsernames.includes(normalizedUsername);
 
         // Генерация JWT токена
         const token = jwt.sign(
@@ -417,7 +418,11 @@ function authenticateApiToken(req, res, next) {
 
 // Middleware для проверки прав администратора
 function requireAdmin(req, res, next) {
-    if (!req.user.isAdmin) {
+    // Приводим username к нижнему регистру для сравнения
+    const userUsername = req.user.username.toLowerCase();
+    const isAdmin = config.adminUsernames.includes(userUsername);
+    
+    if (!isAdmin) {
         return res.status(403).json({ error: 'Требуются права администратора' });
     }
     next();
@@ -875,7 +880,15 @@ function formatDate(dateString) {
 app.listen(PORT, () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);
     console.log(`📝 LDAP URL: ${config.ldapUrl}`);
-    console.log(`👑 Администраторы: ${config.adminUsernames.join(', ') || 'не настроены'}`);
+    
+    // Детальная информация об администраторах
+    if (config.adminUsernames.length > 0) {
+        console.log(`👑 Найдено администраторов: ${config.adminUsernames.length}`);
+        console.log(`👥 Логины администраторов: ${config.adminUsernames.join(', ')}`);
+    } else {
+        console.log(`⚠️  Администраторы: не настроены (установите ADMIN_USERNAMES в .env)`);
+    }
+    
     console.log(`🌐 Приложение доступно по адресу: http://localhost:${PORT}`);
 });
 
