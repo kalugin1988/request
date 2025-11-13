@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
+const AdminUtils = require('./admin-utils.js');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -17,11 +18,210 @@ const config = {
     adminUsernames: (process.env.ADMIN_USERNAMES || '').split(',').map(u => u.trim()).filter(u => u)
 };
 
+// Инициализация утилит администратора
+const adminUtils = new AdminUtils();
+
 // Создаем папку data если её нет
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
     console.log('✅ Папка data создана');
+}
+
+// Report Generator
+class ReportGenerator {
+    constructor(db) {
+        this.db = db;
+    }
+
+    // Полный отчет
+    async generateFullReport() {
+        return new Promise((resolve, reject) => {
+            const report = {
+                timestamp: new Date().toISOString(),
+                summary: {},
+                users: [],
+                pendingItems: [],
+                weeklyStats: []
+            };
+
+            // Сводная статистика
+            const summaryQueries = [
+                `SELECT COUNT(*) as total FROM applications`,
+                `SELECT COUNT(*) as active FROM applications WHERE status = 'active'`,
+                `SELECT COUNT(*) as completed FROM applications WHERE status = 'completed'`,
+                `SELECT COUNT(*) as cancelled FROM applications WHERE status = 'cancelled'`,
+                `SELECT COUNT(*) as urgent FROM applications WHERE priority = 'urgent'`,
+                `SELECT COUNT(*) as high FROM applications WHERE priority = 'high'`,
+                `SELECT COUNT(*) as normal FROM applications WHERE priority = 'normal'`
+            ];
+
+            Promise.all(summaryQueries.map(query => this.runQuery(query)))
+                .then(results => {
+                    report.summary = {
+                        total: results[0][0].total,
+                        active: results[1][0].active,
+                        completed: results[2][0].completed,
+                        cancelled: results[3][0].cancelled,
+                        urgent: results[4][0].urgent,
+                        high: results[5][0].high,
+                        normal: results[6][0].normal
+                    };
+
+                    // Статистика по пользователям
+                    return this.runQuery(`
+                        SELECT 
+                            username,
+                            full_name,
+                            COUNT(*) as total_applications,
+                            SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+                            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                            SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
+                            MAX(created_at) as last_activity
+                        FROM applications 
+                        GROUP BY username, full_name
+                        ORDER BY total_applications DESC
+                    `);
+                })
+                .then(users => {
+                    report.users = users;
+
+                    // Товары в потребности
+                    return this.runQuery(`
+                        SELECT 
+                            subject,
+                            SUM(quantity) as total_quantity,
+                            COUNT(*) as total_requests,
+                            SUM(CASE WHEN priority = 'urgent' THEN 1 ELSE 0 END) as urgent_requests,
+                            SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_requests,
+                            MIN(need_date) as earliest_need_date,
+                            MAX(need_date) as latest_need_date,
+                            GROUP_CONCAT(DISTINCT full_name) as requester_names
+                        FROM applications 
+                        WHERE status = 'active'
+                        GROUP BY subject
+                        ORDER BY total_quantity DESC
+                    `);
+                })
+                .then(items => {
+                    report.pendingItems = items;
+
+                    // Недельная статистика
+                    return this.runQuery(`
+                        SELECT 
+                            DATE(created_at) as date,
+                            COUNT(*) as applications_count,
+                            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+                        FROM applications 
+                        WHERE created_at >= date('now', '-7 days')
+                        GROUP BY DATE(created_at)
+                        ORDER BY date ASC
+                    `);
+                })
+                .then(weeklyStats => {
+                    report.weeklyStats = weeklyStats;
+                    resolve(report);
+                })
+                .catch(reject);
+        });
+    }
+
+    // Отчет по статусам
+    async getStatusReport() {
+        return this.runQuery(`
+            SELECT 
+                status,
+                COUNT(*) as count,
+                ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM applications), 2) as percentage
+            FROM applications 
+            GROUP BY status
+            ORDER BY count DESC
+        `);
+    }
+
+    // Отчет по приоритетам
+    async getPriorityReport() {
+        return this.runQuery(`
+            SELECT 
+                priority,
+                COUNT(*) as count,
+                ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM applications), 2) as percentage
+            FROM applications 
+            GROUP BY priority
+            ORDER BY 
+                CASE priority 
+                    WHEN 'urgent' THEN 1
+                    WHEN 'high' THEN 2
+                    WHEN 'normal' THEN 3
+                    ELSE 4
+                END
+        `);
+    }
+
+    // Отчет по пользователям
+    async getUserReport() {
+        return this.runQuery(`
+            SELECT 
+                username,
+                full_name,
+                COUNT(*) as total_applications,
+                SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
+                MAX(created_at) as last_activity
+            FROM applications 
+            GROUP BY username, full_name
+            ORDER BY total_applications DESC
+        `);
+    }
+
+    // Отчет по товарам в потребности
+    async getPendingItemsReport() {
+        return this.runQuery(`
+            SELECT 
+                subject,
+                SUM(quantity) as total_quantity,
+                COUNT(*) as total_requests,
+                SUM(CASE WHEN priority = 'urgent' THEN 1 ELSE 0 END) as urgent_requests,
+                SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_requests,
+                MIN(need_date) as earliest_need_date,
+                MAX(need_date) as latest_need_date,
+                GROUP_CONCAT(DISTINCT full_name) as requester_names
+            FROM applications 
+            WHERE status = 'active'
+            GROUP BY subject
+            ORDER BY total_quantity DESC, urgent_requests DESC
+        `);
+    }
+
+    // Еженедельный отчет
+    async getWeeklyReport() {
+        return this.runQuery(`
+            SELECT 
+                DATE(created_at) as date,
+                COUNT(*) as applications_count,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN priority = 'urgent' THEN 1 ELSE 0 END) as urgent,
+                SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high
+            FROM applications 
+            WHERE created_at >= date('now', '-7 days')
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        `);
+    }
+
+    // Вспомогательный метод для выполнения запросов
+    runQuery(sql, params = []) {
+        return new Promise((resolve, reject) => {
+            this.db.all(sql, params, (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            });
+        });
+    }
 }
 
 // Инициализация базы данных
@@ -35,6 +235,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
         initializeDatabase();
     }
 });
+
+// Инициализация генератора отчетов
+const reportGenerator = new ReportGenerator(db);
 
 // Инициализация таблиц
 function initializeDatabase() {
@@ -108,6 +311,11 @@ app.get('/', (req, res) => {
 
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'admin.html'));
+});
+
+// Report page
+app.get('/report', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'report.html'));
 });
 
 // Аутентификация
@@ -214,6 +422,51 @@ function requireAdmin(req, res, next) {
     }
     next();
 }
+
+// API для управления администраторами
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const users = await adminUtils.getAllUsers();
+        res.json({
+            success: true,
+            users: users
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка получения списка пользователей' });
+    }
+});
+
+app.post('/api/admin/users/:username', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const { username } = req.params;
+        const result = adminUtils.addAdmin(username);
+        
+        if (result.success) {
+            // Обновляем конфигурацию после изменения списка администраторов
+            config.adminUsernames = adminUtils.getCurrentAdmins();
+        }
+        
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка добавления администратора' });
+    }
+});
+
+app.delete('/api/admin/users/:username', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const { username } = req.params;
+        const result = adminUtils.removeAdmin(username);
+        
+        if (result.success) {
+            // Обновляем конфигурацию после изменения списка администраторов
+            config.adminUsernames = adminUtils.getCurrentAdmins();
+        }
+        
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: 'Ошибка удаления администратора' });
+    }
+});
 
 // Создание заявки
 app.post('/api/applications', authenticateToken, (req, res) => {
@@ -503,6 +756,85 @@ app.get('/api/applications/:id', authenticateApiToken, (req, res) => {
             application: formattedRow
         });
     });
+});
+
+// Отчеты
+app.get('/api/reports/full', authenticateApiToken, async (req, res) => {
+    try {
+        const report = await reportGenerator.generateFullReport();
+        res.json({
+            success: true,
+            report: report
+        });
+    } catch (error) {
+        console.error('❌ Ошибка генерации отчета:', error.message);
+        res.status(500).json({ error: 'Ошибка генерации отчета' });
+    }
+});
+
+app.get('/api/reports/status', authenticateApiToken, async (req, res) => {
+    try {
+        const report = await reportGenerator.getStatusReport();
+        res.json({
+            success: true,
+            report: report
+        });
+    } catch (error) {
+        console.error('❌ Ошибка генерации отчета по статусам:', error.message);
+        res.status(500).json({ error: 'Ошибка генерации отчета по статусам' });
+    }
+});
+
+app.get('/api/reports/priority', authenticateApiToken, async (req, res) => {
+    try {
+        const report = await reportGenerator.getPriorityReport();
+        res.json({
+            success: true,
+            report: report
+        });
+    } catch (error) {
+        console.error('❌ Ошибка генерации отчета по приоритетам:', error.message);
+        res.status(500).json({ error: 'Ошибка генерации отчета по приоритетам' });
+    }
+});
+
+app.get('/api/reports/users', authenticateApiToken, async (req, res) => {
+    try {
+        const report = await reportGenerator.getUserReport();
+        res.json({
+            success: true,
+            report: report
+        });
+    } catch (error) {
+        console.error('❌ Ошибка генерации отчета по пользователям:', error.message);
+        res.status(500).json({ error: 'Ошибка генерации отчета по пользователям' });
+    }
+});
+
+app.get('/api/reports/pending-items', authenticateApiToken, async (req, res) => {
+    try {
+        const report = await reportGenerator.getPendingItemsReport();
+        res.json({
+            success: true,
+            report: report
+        });
+    } catch (error) {
+        console.error('❌ Ошибка генерации отчета по товарам:', error.message);
+        res.status(500).json({ error: 'Ошибка генерации отчета по товарам' });
+    }
+});
+
+app.get('/api/reports/weekly', authenticateApiToken, async (req, res) => {
+    try {
+        const report = await reportGenerator.getWeeklyReport();
+        res.json({
+            success: true,
+            report: report
+        });
+    } catch (error) {
+        console.error('❌ Ошибка генерации еженедельного отчета:', error.message);
+        res.status(500).json({ error: 'Ошибка генерации еженедельного отчета' });
+    }
 });
 
 // Вспомогательные функции

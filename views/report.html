@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчет по заявкам - Система заявок</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c5aa0;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .report-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 20px 0;
+        }
+        
+        .report-header {
+            background: linear-gradient(135deg, var(--primary-color), #1e3a8a);
+            color: white;
+            border-radius: 15px 15px 0 0;
+            padding: 30px;
+        }
+        
+        .stat-card {
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .badge-status {
+            font-size: 0.8em;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 50px;
+        }
+        
+        .print-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+        
+        @media print {
+            body {
+                background: white !important;
+            }
+            .print-btn {
+                display: none;
+            }
+            .report-container {
+                box-shadow: none;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xxl-10">
+                <!-- Заголовок отчета -->
+                <div class="report-container">
+                    <div class="report-header">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h1 class="display-5 fw-bold mb-2">
+                                    <i class="fas fa-chart-bar me-3"></i>Отчет по системе заявок
+                                </h1>
+                                <p class="lead mb-0 opacity-75">
+                                    Статистика заявок на учебные материалы - Школа №25
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-md-end">
+                                <div id="report-meta" class="text-white-50">
+                                    <small>Загрузка данных...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4">
+                        <!-- Сводная статистика -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h3 class="mb-4 text-primary">
+                                    <i class="fas fa-tachometer-alt me-2"></i>Сводная статистика
+                                </h3>
+                                <div class="row" id="summary-stats">
+                                    <!-- Статистика будет загружена здесь -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Графики -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h5 class="mb-3 text-center">
+                                        <i class="fas fa-chart-pie me-2"></i>Распределение по статусам
+                                    </h5>
+                                    <canvas id="statusChart" height="250"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h5 class="mb-3 text-center">
+                                        <i class="fas fa-chart-bar me-2"></i>Распределение по приоритетам
+                                    </h5>
+                                    <canvas id="priorityChart" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Статистика по пользователям -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h3 class="mb-4 text-primary">
+                                    <i class="fas fa-users me-2"></i>Статистика по пользователям
+                                </h3>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="users-table">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Пользователь</th>
+                                                <th>Всего заявок</th>
+                                                <th>Активные</th>
+                                                <th>Выполненные</th>
+                                                <th>Отмененные</th>
+                                                <th>Последняя активность</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="users-table-body">
+                                            <!-- Данные будут загружены здесь -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Товары в потребности -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h3 class="mb-4 text-primary">
+                                    <i class="fas fa-boxes me-2"></i>Товары в потребности
+                                </h3>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="items-table">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Товар</th>
+                                                <th>Общее количество</th>
+                                                <th>Количество заявок</th>
+                                                <th>Срочные заявки</th>
+                                                <th>Высокий приоритет</th>
+                                                <th>Дата потребности</th>
+                                                <th>Заявители</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="items-table-body">
+                                            <!-- Данные будут загружены здесь -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Еженедельная статистика -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h3 class="mb-4 text-primary">
+                                    <i class="fas fa-calendar-week me-2"></i>Активность за последние 7 дней
+                                </h3>
+                                <div class="chart-container">
+                                    <canvas id="weeklyChart" height="150"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопка печати -->
+    <button class="btn btn-primary print-btn shadow" onclick="window.print()">
+        <i class="fas fa-print me-2"></i>Печать отчета
+    </button>
+
+    <!-- Спиннер загрузки -->
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+        <p class="mt-3 text-muted">Загрузка данных отчета...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/report.js"></script>
+</body>
+</html>
