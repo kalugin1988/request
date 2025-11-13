@@ -478,6 +478,8 @@ app.post('/api/applications', authenticateToken, (req, res) => {
     const { subject, quantity, need_date, link, priority = 'normal' } = req.body;
     const { username, fullName } = req.user;
 
+    console.log('📅 Получена дата от пользователя:', need_date);
+
     if (!subject || !quantity || !need_date) {
         return res.status(400).json({ 
             error: 'Название предмета, количество и дата обязательны' 
@@ -550,9 +552,11 @@ app.get('/api/my-applications', authenticateToken, (req, res) => {
         const formattedRows = rows.map(row => ({
             ...row,
             created_at: formatDate(row.created_at),
-            need_date: formatDate(row.need_date)
+            // need_date оставляем как есть, так как это поле ввода пользователя
         }));
 
+        console.log(`📋 Загружено ${formattedRows.length} заявок для пользователя ${username}`);
+        
         res.json({
             success: true,
             applications: formattedRows,
@@ -688,9 +692,11 @@ app.get('/api/admin/applications', authenticateToken, requireAdmin, (req, res) =
         const formattedRows = rows.map(row => ({
             ...row,
             created_at: formatDate(row.created_at),
-            need_date: formatDate(row.need_date)
+            // need_date оставляем как есть
         }));
 
+        console.log(`📋 Администратор загрузил ${formattedRows.length} заявок`);
+        
         res.json({
             success: true,
             applications: formattedRows,
@@ -719,7 +725,7 @@ app.get('/api/applications', authenticateApiToken, (req, res) => {
         const formattedRows = rows.map(row => ({
             ...row,
             created_at: formatDate(row.created_at),
-            need_date: formatDate(row.need_date)
+            // need_date оставляем как есть
         }));
 
         res.json({
@@ -753,7 +759,7 @@ app.get('/api/applications/:id', authenticateApiToken, (req, res) => {
         const formattedRow = {
             ...row,
             created_at: formatDate(row.created_at),
-            need_date: formatDate(row.need_date)
+            // need_date оставляем как есть
         };
 
         res.json({
@@ -862,16 +868,53 @@ function getPriorityText(priority) {
 }
 
 function formatDate(dateString) {
-    if (!dateString) return '';
+    if (!dateString) {
+        console.log('❌ Пустая дата:', dateString);
+        return '';
+    }
+    
+    console.log('🔍 Форматируем дату:', dateString, 'Тип:', typeof dateString);
     
     try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ru-RU', {
+        let date;
+        
+        // Если дата в формате SQLite (YYYY-MM-DD HH:MM:SS)
+        if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
+            console.log('📅 Обнаружен SQLite формат');
+            // Заменяем пробел на 'T' и добавляем часовой пояс
+            date = new Date(dateString.replace(' ', 'T') + 'Z');
+        } 
+        // Если дата в формате YYYY-MM-DD
+        else if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.log('📅 Обнаружен формат YYYY-MM-DD');
+            date = new Date(dateString + 'T00:00:00Z');
+        }
+        // Если это уже объект Date или timestamp
+        else {
+            console.log('📅 Другой формат даты');
+            date = new Date(dateString);
+        }
+        
+        console.log('📅 Результат парсинга:', date);
+        console.log('📅 isValid:', !isNaN(date.getTime()));
+        
+        // Проверяем, что дата валидна
+        if (isNaN(date.getTime())) {
+            console.warn('⚠️  Невалидная дата после парсинга:', dateString);
+            return dateString; // Возвращаем оригинальную строку
+        }
+        
+        const formatted = date.toLocaleDateString('ru-RU', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'
         });
+        
+        console.log('✅ Отформатированная дата:', formatted);
+        return formatted;
+        
     } catch (error) {
+        console.error('❌ Ошибка форматирования даты:', dateString, error);
         return dateString;
     }
 }

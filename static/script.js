@@ -29,13 +29,57 @@ class ApplicationSystem {
     }
 
     setMinDate() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const todayFormatted = today.toISOString().split('T')[0];
+        
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowFormatted = tomorrow.toISOString().split('T')[0];
+        
         const needDateInput = document.getElementById('needDate');
         if (needDateInput) {
-            needDateInput.min = today;
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            needDateInput.value = tomorrow.toISOString().split('T')[0];
+            needDateInput.min = todayFormatted;
+            needDateInput.value = tomorrowFormatted;
+        }
+    }
+
+    // Универсальная функция форматирования дат
+    formatDate(dateString) {
+        if (!dateString) return '';
+        
+        try {
+            let date;
+            
+            // Если дата уже в правильном формате (с точками)
+            if (dateString.includes('.')) {
+                return dateString;
+            }
+            // Если дата в формате SQLite "2025-11-13 09:04:42"
+            else if (dateString.includes(' ')) {
+                date = new Date(dateString.replace(' ', 'T') + 'Z');
+            }
+            // Если дата в формате "2025-11-13"
+            else if (dateString.includes('-')) {
+                date = new Date(dateString + 'T00:00:00Z');
+            }
+            // Другие форматы
+            else {
+                date = new Date(dateString);
+            }
+            
+            if (isNaN(date.getTime())) {
+                console.warn('Невалидная дата:', dateString);
+                return dateString;
+            }
+            
+            return date.toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        } catch (error) {
+            console.error('Ошибка форматирования даты:', error);
+            return dateString;
         }
     }
 
@@ -234,7 +278,9 @@ class ApplicationSystem {
     createApplicationCard(application) {
         const statusText = this.getStatusText(application.status);
         const priorityText = this.getPriorityText(application.priority);
-        const createdDate = new Date(application.created_at).toLocaleDateString('ru-RU');
+        
+        // Правильно форматируем дату создания
+        const createdDate = this.formatDate(application.created_at);
         
         let actionButtons = '';
         
@@ -292,7 +338,9 @@ class ApplicationSystem {
     createAdminApplicationCard(application) {
         const statusText = this.getStatusText(application.status);
         const priorityText = this.getPriorityText(application.priority);
-        const createdDate = new Date(application.created_at).toLocaleDateString('ru-RU');
+        
+        // Правильно форматируем дату создания
+        const createdDate = this.formatDate(application.created_at);
         
         let actionButtons = '';
         
