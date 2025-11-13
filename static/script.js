@@ -83,6 +83,84 @@ class ApplicationSystem {
         }
     }
 
+    // Функция форматирования даты и времени
+    formatDateTime(dateString) {
+        if (!dateString) return '';
+        
+        try {
+            let date;
+            
+            // Если дата в формате SQLite "2025-11-13 09:04:42"
+            if (dateString.includes(' ')) {
+                date = new Date(dateString.replace(' ', 'T') + 'Z');
+            }
+            // Если дата в формате "2025-11-13"
+            else if (dateString.includes('-')) {
+                date = new Date(dateString + 'T00:00:00Z');
+            }
+            // Другие форматы
+            else {
+                date = new Date(dateString);
+            }
+            
+            if (isNaN(date.getTime())) {
+                console.warn('Невалидная дата:', dateString);
+                return dateString;
+            }
+            
+            const dateFormatted = date.toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            
+            const timeFormatted = date.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            return `${dateFormatted} ${timeFormatted}`;
+        } catch (error) {
+            console.error('Ошибка форматирования даты и времени:', error);
+            return dateString;
+        }
+    }
+
+    // Функция для получения только времени (часы:минуты)
+    formatTime(dateString) {
+        if (!dateString) return '';
+        
+        try {
+            let date;
+            
+            // Если дата в формате SQLite "2025-11-13 09:04:42"
+            if (dateString.includes(' ')) {
+                date = new Date(dateString.replace(' ', 'T') + 'Z');
+            }
+            // Если дата в формате "2025-11-13"
+            else if (dateString.includes('-')) {
+                date = new Date(dateString + 'T00:00:00Z');
+            }
+            // Другие форматы
+            else {
+                date = new Date(dateString);
+            }
+            
+            if (isNaN(date.getTime())) {
+                console.warn('Невалидная дата:', dateString);
+                return '';
+            }
+            
+            return date.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            console.error('Ошибка форматирования времени:', error);
+            return '';
+        }
+    }
+
     async handleAuth(e) {
         e.preventDefault();
         
@@ -279,8 +357,9 @@ class ApplicationSystem {
         const statusText = this.getStatusText(application.status);
         const priorityText = this.getPriorityText(application.priority);
         
-        // Правильно форматируем дату создания
+        // Форматируем дату и время создания
         const createdDate = this.formatDate(application.created_at);
+        const createdTime = this.formatTime(application.created_at);
         
         let actionButtons = '';
         
@@ -325,7 +404,7 @@ class ApplicationSystem {
                     <div class="small text-muted mb-2">
                         <div>Количество: ${application.quantity}</div>
                         <div>Нужно к: ${application.need_date}</div>
-                        <div>Создана: ${createdDate}</div>
+                        <div>Создана: ${createdDate} в ${createdTime}</div>
                         ${application.link ? `<div><a href="${application.link}" target="_blank" class="text-primary">Ссылка на товар</a></div>` : ''}
                     </div>
                     
@@ -339,8 +418,9 @@ class ApplicationSystem {
         const statusText = this.getStatusText(application.status);
         const priorityText = this.getPriorityText(application.priority);
         
-        // Правильно форматируем дату создания
+        // Форматируем дату и время создания
         const createdDate = this.formatDate(application.created_at);
+        const createdTime = this.formatTime(application.created_at);
         
         let actionButtons = '';
         
@@ -381,7 +461,7 @@ class ApplicationSystem {
                         <div><strong>Автор:</strong> ${application.full_name}</div>
                         <div>Количество: ${application.quantity}</div>
                         <div>Нужно к: ${application.need_date}</div>
-                        <div>Создана: ${createdDate}</div>
+                        <div>Создана: ${createdDate} в ${createdTime}</div>
                         ${application.link ? `<div><a href="${application.link}" target="_blank" class="text-primary">Ссылка на товар</a></div>` : ''}
                     </div>
                     

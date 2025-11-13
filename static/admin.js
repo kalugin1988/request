@@ -23,6 +23,81 @@ class AdminPanel {
         });
     }
 
+    // Универсальная функция форматирования дат
+    formatDate(dateString) {
+        if (!dateString) return '';
+        
+        try {
+            let date;
+            
+            // Если дата уже в правильном формате (с точками)
+            if (dateString.includes('.')) {
+                return dateString;
+            }
+            // Если дата в формате SQLite "2025-11-13 09:04:42"
+            else if (dateString.includes(' ')) {
+                date = new Date(dateString.replace(' ', 'T') + 'Z');
+            }
+            // Если дата в формате "2025-11-13"
+            else if (dateString.includes('-')) {
+                date = new Date(dateString + 'T00:00:00Z');
+            }
+            // Другие форматы
+            else {
+                date = new Date(dateString);
+            }
+            
+            if (isNaN(date.getTime())) {
+                console.warn('Невалидная дата:', dateString);
+                return dateString;
+            }
+            
+            return date.toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        } catch (error) {
+            console.error('Ошибка форматирования даты:', error);
+            return dateString;
+        }
+    }
+
+    // Функция для получения только времени (часы:минуты)
+    formatTime(dateString) {
+        if (!dateString) return '';
+        
+        try {
+            let date;
+            
+            // Если дата в формате SQLite "2025-11-13 09:04:42"
+            if (dateString.includes(' ')) {
+                date = new Date(dateString.replace(' ', 'T') + 'Z');
+            }
+            // Если дата в формате "2025-11-13"
+            else if (dateString.includes('-')) {
+                date = new Date(dateString + 'T00:00:00Z');
+            }
+            // Другие форматы
+            else {
+                date = new Date(dateString);
+            }
+            
+            if (isNaN(date.getTime())) {
+                console.warn('Невалидная дата:', dateString);
+                return '';
+            }
+            
+            return date.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            console.error('Ошибка форматирования времени:', error);
+            return '';
+        }
+    }
+
     async handleAuth(e) {
         e.preventDefault();
         
@@ -144,8 +219,12 @@ class AdminPanel {
     createAdminApplicationCard(application) {
         const statusText = this.getStatusText(application.status);
         const priorityText = this.getPriorityText(application.priority);
-        const createdDate = new Date(application.created_at).toLocaleDateString('ru-RU');
-        const updatedDate = new Date(application.updated_at).toLocaleDateString('ru-RU');
+        
+        // Форматируем дату и время создания
+        const createdDate = this.formatDate(application.created_at);
+        const createdTime = this.formatTime(application.created_at);
+        const updatedDate = this.formatDate(application.updated_at);
+        const updatedTime = this.formatTime(application.updated_at);
         
         let statusButtons = '';
         
@@ -230,7 +309,15 @@ class AdminPanel {
                                 </div>
                                 <div class="col-sm-4">
                                     <small class="text-muted">
-                                        <i class="fas fa-clock me-1"></i><strong>Создана:</strong> ${createdDate}
+                                        <i class="fas fa-clock me-1"></i><strong>Создана:</strong> ${createdDate} в ${createdTime}
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-sm-6">
+                                    <small class="text-muted">
+                                        <i class="fas fa-sync-alt me-1"></i><strong>Обновлена:</strong> ${updatedDate} в ${updatedTime}
                                     </small>
                                 </div>
                             </div>
